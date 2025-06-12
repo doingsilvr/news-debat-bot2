@@ -138,4 +138,3 @@ if user_input := st.chat_input("당신의 생각은 어떠신가요?"):
 
     # 로그 저장
     log_to_gsheet(user_input, response, st.session_state.turn_count, st.session_state.start_time)
-
