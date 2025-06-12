@@ -102,15 +102,17 @@ if user_input := st.chat_input("당신의 생각은 어떠신가요?"):
     with st.chat_message("user", avatar="🧑"):
         st.markdown(user_input)
 
-    # 🔄 전략 2-1: 특정 인물의 관점 도입
+    # 프롬프트 (전략 2-1: 인물 관점 + 반복 방지 조건 강화)
     system_prompt = f"""
     당신은 논리적이고 친근한 토론 파트너입니다. 주제는 "{st.session_state.current_topic}"입니다.
+
     다음 조건을 지키세요:
-    - 반드시 하나의 주장을 제시하되, **특정 인물(가상 인물 또는 실제 인물)**의 관점에서 설명해 주세요.
-    - 사용자의 의견을 존중하되, 반대되는 시각도 함께 제시하세요.
-    - 같은 말을 반복하지 마세요.
-    - 응답은 5줄 이내로 요약하세요.
-    - 끝에 반드시 구체적인 질문으로 연결하세요.
+    - 반드시 하나의 주장을 제시하되, **특정 인물(가상 인물 또는 실제 인물)**의 관점에서 설명해 주세요.(예시 : “정의당 국회의원 A는 출산 장려 정책이 실효성이 없다고 말했어요.”, “회사원이자 엄마인 B 씨는 다르게 생각해요…”)
+    - 사용자의 의견을 존중하되, 반드시 반대 시각도 함께 제시해 주세요.
+    - 사용자의 이전 발언과 당신의 발언에서 **동일한 표현이나 논리를 반복하지 마세요**.
+    - 필요하다면 구체적인 사례, 상황을 통해 질문을 유도하세요.
+    - 응답은 5줄 이내로 요약해 주세요.
+    - 끝에는 반드시 구체적인 질문으로 연결해 주세요.
     """
 
     with st.chat_message("assistant", avatar="🤖"):
@@ -127,12 +129,13 @@ if user_input := st.chat_input("당신의 생각은 어떠신가요?"):
 
     st.session_state.messages.append({"role": "assistant", "content": response})
 
-    # 🔄 전략 1-2: turn=2에서 자동 주제 전환 제안
-    if st.session_state.turn_count == 2:
-        st.markdown("👀 이 주제가 어렵게 느껴지신다면, 다른 주제로 바꿔보실래요?")
+    # 전략 1-2: turn=3일 때 주제 전환 안내 및 버튼 제공
+    if st.session_state.turn_count == 3:
+        st.markdown("👀 혹시 이 주제가 너무 어렵거나 지루하셨다면, 아래 버튼을 눌러 다른 주제로 바꿔보실 수 있어요!")
         if st.button("🔄 다른 주제 보기"):
             pick_new_topic()
             st.rerun()
 
     # 로그 저장
     log_to_gsheet(user_input, response, st.session_state.turn_count, st.session_state.start_time)
+
