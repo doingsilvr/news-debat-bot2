@@ -176,4 +176,3 @@ if user_input := st.chat_input("당신의 생각을 들려주세요..."):
     except:
         pass
     st.rerun()
-
