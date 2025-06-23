@@ -1,7 +1,6 @@
 import streamlit as st
 from openai import OpenAI
 from PIL import Image
-import base64
 import random
 from datetime import datetime
 import gspread
@@ -51,41 +50,71 @@ if "turn_count" not in st.session_state:
 if "start_time" not in st.session_state:
     st.session_state.start_time = datetime.now()
 
-# ============================ UI ============================
+# ============================ UI 스타일 ============================
 st.markdown("""
-    <style>
-        .main-title {
-            font-size: 28px;
-            font-weight: 700;
-            color: #1c2c5b;
-            margin-top: 10px;
-            text-align: center;
-        }
-        .subtitle {
-            font-size: 16px;
-            color: #6c757d;
-            text-align: center;
-            margin-top: -5px;
-            margin-bottom: 25px;
-        }
-        .topic-box {
-            background-color: #1c2c5b;
-            color: white;
-            padding: 14px 20px;
-            border-radius: 12px;
-            font-size: 17px;
-            font-weight: 600;
-            text-align: center;
-            margin-bottom: 10px;
-        }
-        .appview-container .main .block-container {
-            max-width: 600px;
-            padding-top: 1rem;
-            padding-bottom: 2rem;
-        }
-    </style>
+<style>
+    .main-title {
+        font-size: 28px;
+        font-weight: 700;
+        color: #1c2c5b;
+        margin-top: 10px;
+        text-align: center;
+    }
+    .subtitle {
+        font-size: 16px;
+        color: #6c757d;
+        text-align: center;
+        margin-top: -5px;
+        margin-bottom: 25px;
+    }
+    .topic-box {
+        background-color: #1c2c5b;
+        color: white;
+        padding: 14px 20px;
+        border-radius: 12px;
+        font-size: 17px;
+        font-weight: 600;
+        text-align: center;
+        margin-bottom: 10px;
+    }
+    .stChatMessage.user {
+        background-color: #3b82f6 !important;
+        color: white !important;
+        border-radius: 18px 18px 4px 18px;
+        padding: 10px 14px;
+    }
+    .stChatMessage.assistant {
+        background-color: white !important;
+        color: black !important;
+        border-radius: 18px 18px 18px 4px;
+        padding: 10px 14px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    }
+    .typing-indicator {
+        display: flex;
+        gap: 6px;
+        padding-left: 10px;
+        padding-bottom: 10px;
+        margin-top: -10px;
+    }
+    .typing-dot {
+        width: 8px;
+        height: 8px;
+        background: #a5b4fc;
+        border-radius: 50%;
+        animation: blink 1.4s infinite ease-in-out;
+    }
+    .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+    .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+    @keyframes blink {
+        0%, 80%, 100% { opacity: 0; }
+        40% { opacity: 1; }
+    }
+</style>
 """, unsafe_allow_html=True)
 
+# ============================ 상단 로고 및 안내 ============================
 try:
     service_logo = Image.open("로고1.png")
     st.image(service_logo, width=80)
@@ -159,6 +188,15 @@ if user_input := st.chat_input("메시지를 입력해주세요"):
 """
 
     with st.chat_message("assistant", avatar="🤖"):
+        with st.empty():
+            st.markdown("""
+            <div class="typing-indicator">
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+            </div>
+            """, unsafe_allow_html=True)
+
         try:
             stream = client.chat.completions.create(
                 model="gpt-3.5-turbo",
