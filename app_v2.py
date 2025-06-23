@@ -37,7 +37,251 @@ def log_to_gsheet(user_input, gpt_response, turn, start_time):
     ])
 
 # ============================ 초기 상태 ============================
-st.set_page_config(page_title="토론 메이트", page_icon="🗣️", layout="centered")
+st.set_page_config(
+    page_title="토론 메이트", 
+    page_icon="🗣️", 
+    layout="wide",
+    initial_sidebar_state="collapsed"
+)
+
+# ============================ 커스텀 CSS ============================
+st.markdown("""
+<style>
+    /* 전체 배경 */
+    .stApp {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+    
+    /* 메인 컨테이너 */
+    .main-container {
+        background: rgba(255, 255, 255, 0.95);
+        border-radius: 20px;
+        padding: 30px;
+        margin: 20px auto;
+        max-width: 800px;
+        box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        backdrop-filter: blur(10px);
+    }
+    
+    /* 헤더 스타일 */
+    .app-header {
+        text-align: center;
+        margin-bottom: 30px;
+    }
+    
+    .app-title {
+        font-size: 2.5rem;
+        font-weight: 700;
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        margin-bottom: 10px;
+    }
+    
+    .app-subtitle {
+        color: #666;
+        font-size: 1.1rem;
+        margin-bottom: 20px;
+    }
+    
+    /* 온라인 상태 표시 */
+    .status-indicator {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        margin-bottom: 20px;
+    }
+    
+    .status-dot {
+        width: 8px;
+        height: 8px;
+        background: #4CAF50;
+        border-radius: 50%;
+        animation: pulse 2s infinite;
+    }
+    
+    @keyframes pulse {
+        0% { opacity: 1; }
+        50% { opacity: 0.5; }
+        100% { opacity: 1; }
+    }
+    
+    /* 주제 카드 */
+    .topic-card {
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        color: white;
+        padding: 20px;
+        border-radius: 15px;
+        margin: 20px 0;
+        text-align: center;
+        font-size: 1.2rem;
+        font-weight: 600;
+        box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
+    }
+    
+    /* 메시지 컨테이너 */
+    .chat-container {
+        max-height: 400px;
+        overflow-y: auto;
+        padding: 20px 0;
+        margin: 20px 0;
+    }
+    
+    /* 봇 메시지 */
+    .bot-message {
+        display: flex;
+        align-items: flex-start;
+        margin-bottom: 20px;
+        gap: 12px;
+    }
+    
+    .bot-avatar {
+        width: 40px;
+        height: 40px;
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.2rem;
+        flex-shrink: 0;
+    }
+    
+    .bot-message-content {
+        background: #f8f9ff;
+        border: 1px solid #e1e5f2;
+        border-radius: 18px 18px 18px 4px;
+        padding: 15px 20px;
+        max-width: 70%;
+        line-height: 1.5;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    }
+    
+    /* 사용자 메시지 */
+    .user-message {
+        display: flex;
+        align-items: flex-start;
+        margin-bottom: 20px;
+        gap: 12px;
+        flex-direction: row-reverse;
+    }
+    
+    .user-avatar {
+        width: 40px;
+        height: 40px;
+        background: linear-gradient(135deg, #4CAF50, #45a049);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.2rem;
+        flex-shrink: 0;
+    }
+    
+    .user-message-content {
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        color: white;
+        border-radius: 18px 18px 4px 18px;
+        padding: 15px 20px;
+        max-width: 70%;
+        line-height: 1.5;
+        box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+    }
+    
+    /* 버튼 스타일 */
+    .stButton > button {
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        color: white;
+        border: none;
+        border-radius: 25px;
+        padding: 12px 30px;
+        font-weight: 600;
+        font-size: 1rem;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+    }
+    
+    .stButton > button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+    }
+    
+    /* 채팅 입력창 */
+    .stChatInput > div > div > input {
+        border-radius: 25px;
+        border: 2px solid #e1e5f2;
+        padding: 15px 20px;
+        font-size: 1rem;
+        background: rgba(255, 255, 255, 0.9);
+        backdrop-filter: blur(10px);
+    }
+    
+    .stChatInput > div > div > input:focus {
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+    
+    /* 로딩 애니메이션 */
+    .typing-indicator {
+        display: flex;
+        gap: 4px;
+        padding: 15px 20px;
+    }
+    
+    .typing-dot {
+        width: 8px;
+        height: 8px;
+        background: #667eea;
+        border-radius: 50%;
+        animation: typing 1.4s infinite ease-in-out;
+    }
+    
+    .typing-dot:nth-child(1) { animation-delay: -0.32s; }
+    .typing-dot:nth-child(2) { animation-delay: -0.16s; }
+    
+    @keyframes typing {
+        0%, 80%, 100% { transform: scale(0); }
+        40% { transform: scale(1); }
+    }
+    
+    /* 반응형 디자인 */
+    @media (max-width: 768px) {
+        .main-container {
+            margin: 10px;
+            padding: 20px;
+        }
+        
+        .bot-message-content,
+        .user-message-content {
+            max-width: 85%;
+        }
+        
+        .app-title {
+            font-size: 2rem;
+        }
+    }
+    
+    /* 스크롤바 커스터마이징 */
+    .chat-container::-webkit-scrollbar {
+        width: 6px;
+    }
+    
+    .chat-container::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 10px;
+    }
+    
+    .chat-container::-webkit-scrollbar-thumb {
+        background: #667eea;
+        border-radius: 10px;
+    }
+    
+    .chat-container::-webkit-scrollbar-thumb:hover {
+        background: #764ba2;
+    }
+</style>
+""", unsafe_allow_html=True)
 
 if "session_id" not in st.session_state:
     st.session_state.session_id = f"session_{datetime.now().strftime('%Y%m%d%H%M%S')}"
@@ -50,16 +294,22 @@ if "turn_count" not in st.session_state:
 if "start_time" not in st.session_state:
     st.session_state.start_time = datetime.now()
 
-# ============================ UI ============================
-try:
-    service_logo = Image.open("로고1.png")
-    st.image(service_logo, width=100)
-except:
-    st.warning("로고1 이미지를 불러올 수 없습니다. '로고1.png' 파일을 확인해주세요.")
+# ============================ 메인 컨테이너 ============================
+st.markdown('<div class="main-container">', unsafe_allow_html=True)
 
-st.title("토론 메이트 - 오늘의 주제 한마디")
-st.markdown("""<div style="text-align:center; margin-top:-10px; margin-bottom:30px; font-size:16px; color:#bbb;">흥미로운 사회 주제에 대해 함께 생각해보고 이야기 나눠보아요. 🧠</div>""", unsafe_allow_html=True)
+# ============================ 헤더 ============================
+st.markdown("""
+<div class="app-header">
+    <h1 class="app-title">🗣️ 토론 메이트</h1>
+    <p class="app-subtitle">흥미로운 사회 주제에 대해 함께 생각해보고 이야기 나눠보아요</p>
+    <div class="status-indicator">
+        <div class="status-dot"></div>
+        <span style="color: #4CAF50; font-weight: 600;">Online Now</span>
+    </div>
+</div>
+""", unsafe_allow_html=True)
 
+# ============================ 주제 설정 ============================
 topic_pool = [
     "재택근무, 계속 확대되어야 할까요?",
     "AI 면접 도입, 공정한 채용일까요?",
@@ -77,32 +327,84 @@ def pick_new_topic():
 if not st.session_state.current_topic:
     pick_new_topic()
 
+# 주제 표시
+st.markdown(f"""
+<div class="topic-card">
+    📝 오늘의 주제: {st.session_state.current_topic}
+</div>
+""", unsafe_allow_html=True)
+
 # 첫 인삿말
 if not st.session_state.messages:
-    intro = f"""안녕하세요, 저는 오늘의 주제를 함께 이야기 나누는 '토론 메이트'예요! 🤖  
-🗣️ **오늘의 주제: {st.session_state.current_topic}**  
-이 주제에 대해 어떻게 생각하시나요? 찬성/반대 또는 다른 관점에서 자유롭게 이야기해 주세요."""
+    intro = f"""안녕하세요! 저는 토론 메이트예요 🤖
+
+**{st.session_state.current_topic}**
+
+이 주제에 대해 어떻게 생각하시나요? 찬성이든 반대든, 여러분의 솔직한 의견을 들려주세요!"""
     st.session_state.messages.append({"role": "assistant", "content": intro})
 
-# 이전 메시지 출력
-for msg in st.session_state.messages:
-    with st.chat_message(msg["role"], avatar="🤖" if msg["role"] == "assistant" else "🧑"):
-        st.markdown(msg["content"])
+# ============================ 채팅 메시지 표시 ============================
+st.markdown('<div class="chat-container">', unsafe_allow_html=True)
 
-# 주제 바꾸기 버튼
-if st.button("🔄 다른 주제 주세요"):
-    pick_new_topic()
-    st.rerun()
+for msg in st.session_state.messages:
+    if msg["role"] == "assistant":
+        st.markdown(f"""
+        <div class="bot-message">
+            <div class="bot-avatar">🤖</div>
+            <div class="bot-message-content">{msg["content"]}</div>
+        </div>
+        """, unsafe_allow_html=True)
+    else:
+        st.markdown(f"""
+        <div class="user-message">
+            <div class="user-avatar">👤</div>
+            <div class="user-message-content">{msg["content"]}</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+st.markdown('</div>', unsafe_allow_html=True)
+
+# ============================ 컨트롤 버튼 ============================
+col1, col2 = st.columns([1, 1])
+
+with col1:
+    if st.button("🔄 다른 주제로 바꾸기"):
+        pick_new_topic()
+        st.rerun()
+
+with col2:
+    if st.session_state.turn_count > 0:
+        st.markdown(f"<div style='text-align: center; color: #666; font-size: 0.9rem; padding: 10px;'>💬 대화 턴: {st.session_state.turn_count}</div>", unsafe_allow_html=True)
 
 # ============================ 사용자 입력 처리 ============================
-if user_input := st.chat_input("당신의 생각은 어떠신가요?"):
+if user_input := st.chat_input("당신의 생각을 들려주세요..."):
     st.session_state.messages.append({"role": "user", "content": user_input})
     st.session_state.turn_count += 1
 
-    with st.chat_message("user", avatar="🧑"):
-        st.markdown(user_input)
+    # 사용자 메시지 즉시 표시
+    st.markdown(f"""
+    <div class="user-message">
+        <div class="user-avatar">👤</div>
+        <div class="user-message-content">{user_input}</div>
+    </div>
+    """, unsafe_allow_html=True)
 
-    # 프롬프트 (전략 2-1: 인물 관점 + 반복 방지 조건 강화)
+    # 타이핑 인디케이터 표시
+    typing_placeholder = st.empty()
+    typing_placeholder.markdown("""
+    <div class="bot-message">
+        <div class="bot-avatar">🤖</div>
+        <div class="bot-message-content">
+            <div class="typing-indicator">
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+            </div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # 프롬프트 (기존과 동일)
     system_prompt = f"""
     당신은 논리적이고 도전적인 토론 파트너입니다. 주제는 "{st.session_state.current_topic}"입니다.
 
@@ -123,26 +425,46 @@ if user_input := st.chat_input("당신의 생각은 어떠신가요?"):
 - 토론을 흐지부지 마무리하지 마세요.
 """
 
-    with st.chat_message("assistant", avatar="🤖"):
-        try:
-            stream = client.chat.completions.create(
-                model="gpt-3.5-turbo",
-                messages=[{"role": "system", "content": system_prompt}] + st.session_state.messages,
-                stream=True,
-            )
-            response = st.write_stream(stream)
-        except Exception as e:
-            response = f"❌ GPT 호출 중 오류가 발생했습니다: {str(e)}"
-            st.error(response)
+    try:
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[{"role": "system", "content": system_prompt}] + st.session_state.messages,
+            temperature=0.7
+        )
+        bot_response = response.choices[0].message.content
+        
+        # 타이핑 인디케이터 제거 및 실제 응답 표시
+        typing_placeholder.empty()
+        
+    except Exception as e:
+        bot_response = f"❌ 죄송해요, 일시적인 오류가 발생했습니다. 다시 시도해주세요."
+        typing_placeholder.empty()
 
-    st.session_state.messages.append({"role": "assistant", "content": response})
+    st.session_state.messages.append({"role": "assistant", "content": bot_response})
 
-    # 전략 1-2: turn=3일 때 주제 전환 안내 및 버튼 제공
+    # 봇 응답 표시
+    st.markdown(f"""
+    <div class="bot-message">
+        <div class="bot-avatar">🤖</div>
+        <div class="bot-message-content">{bot_response}</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # turn=3일 때 주제 전환 안내
     if st.session_state.turn_count == 3:
-        st.markdown("👀 혹시 이 주제가 너무 어렵거나 지루하셨다면, 아래 버튼을 눌러 다른 주제로 바꿔보실 수 있어요!")
-        if st.button("🔄 다른 주제 보기"):
-            pick_new_topic()
-            st.rerun()
+        st.markdown("""
+        <div style="text-align: center; background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 10px; padding: 15px; margin: 20px 0; color: #856404;">
+            💡 <strong>혹시 이 주제가 어렵거나 지루하셨나요?</strong><br>
+            언제든 새로운 주제로 바꿔보실 수 있어요!
+        </div>
+        """, unsafe_allow_html=True)
 
     # 로그 저장
-    log_to_gsheet(user_input, response, st.session_state.turn_count, st.session_state.start_time)
+    try:
+        log_to_gsheet(user_input, bot_response, st.session_state.turn_count, st.session_state.start_time)
+    except:
+        pass  # 로그 저장 실패해도 앱 동작에는 영향 없음
+
+    st.rerun()
+
+st.markdown('</div>', unsafe_allow_html=True)  # main-container 종료
