@@ -5,6 +5,7 @@ import base64
 import random
 from datetime import datetime
 import gspread
+from pathlib import Path
 
 # ============================ 시크릿 설정 ============================
 client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
@@ -13,7 +14,7 @@ client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 def get_gsheet():
     credentials = st.secrets["GSHEET_CREDENTIALS"]
     gc = gspread.service_account_from_dict(credentials)
-    sheet = gc.open_by_url(st.secrets["GSHEET_URL"]).worksheet("시트2")
+    sheet = gc.open_by_url(st.secrets["GSHEET_URL"]).worksheet("debatebot2")
     return sheet
 
 def log_to_gsheet(user_input, gpt_response, turn, start_time):
@@ -38,7 +39,7 @@ def log_to_gsheet(user_input, gpt_response, turn, start_time):
     ])
 
 # ============================ 초기 상태 ============================
-st.set_page_config(page_title="DebateBot 2", page_icon="🟣", layout="wide")
+st.set_page_config(page_title="DebateBot 2", page_icon="🤖", layout="wide")
 if "session_id" not in st.session_state:
     st.session_state.session_id = f"session_{datetime.now().strftime('%Y%m%d%H%M%S')}"
 if "messages" not in st.session_state:
@@ -53,110 +54,91 @@ if "start_time" not in st.session_state:
 # ============================ CSS ============================
 st.markdown("""
 <style>
-    .stApp { background-color: #fdfbff; }
+    .stApp {
+        background-color: #f5f7fa;
+    }
     .main-container {
-        background-color: #ffffff;
-        border-radius: 20px;
-        padding: 30px;
-        max-width: 800px;
-        margin: auto;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
-    }
-    .header {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        margin-bottom: 20px;
-    }
-    .header img {
-        width: 80px;
-        height: 80px;
-        margin-bottom: 10px;
+        background-color: white;
+        border-radius: 15px;
+        padding: 20px;
+        margin: 10px;
+        box-shadow: 0 0 12px rgba(0, 0, 0, 0.05);
     }
     .header-title {
-        font-size: 2rem;
+        font-size: 1.8rem;
         font-weight: bold;
-        color: #6b4eff;
+        color: #1c2c5b;
+        text-align: center;
+        margin-bottom: 10px;
     }
     .header-subtitle {
         font-size: 1rem;
-        color: #666;
-        margin-top: 5px;
+        color: #6c757d;
+        text-align: center;
+        margin-bottom: 20px;
     }
     .chat-container {
-        padding: 20px 0;
-        max-height: 400px;
+        max-height: 450px;
         overflow-y: auto;
+        padding-bottom: 10px;
     }
     .bot-message, .user-message {
         display: flex;
-        margin-bottom: 16px;
+        align-items: flex-start;
+        margin: 10px 0;
     }
     .bot-message .avatar, .user-message .avatar {
-        width: 40px;
-        height: 40px;
+        width: 36px;
+        height: 36px;
         border-radius: 50%;
+        background-color: #1c2c5b;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 20px;
-        background-color: #6b4eff20;
+        font-size: 18px;
+        color: white;
+        flex-shrink: 0;
     }
     .bot-message .message, .user-message .message {
         padding: 12px 16px;
-        border-radius: 15px;
-        max-width: 70%;
-        box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+        border-radius: 12px;
+        margin: 0 10px;
+        max-width: 80%;
         line-height: 1.5;
     }
     .bot-message .message {
-        background-color: #f4f2ff;
-        color: #333;
+        background-color: #eef1f9;
+        color: #1c2c5b;
     }
     .user-message {
         flex-direction: row-reverse;
     }
     .user-message .avatar {
-        background-color: #d1c4fd;
-        margin-left: 10px;
-        margin-right: 0;
+        background-color: #6f42c1;
     }
     .user-message .message {
-        background-color: #6b4eff;
-        color: #fff;
+        background-color: #1c2c5b;
+        color: white;
     }
     .topic-card {
+        background-color: #1c2c5b;
+        color: white;
+        padding: 12px 18px;
+        border-radius: 12px;
         text-align: center;
-        background-color: #ede7ff;
-        color: #4a3fc1;
-        padding: 15px;
-        border-radius: 10px;
         font-weight: 600;
         margin-bottom: 20px;
     }
 </style>
 """, unsafe_allow_html=True)
 
-# ============================ 메인 UI ============================
+# ============================ MAIN UI ============================
 st.markdown('<div class="main-container">', unsafe_allow_html=True)
 
-from pathlib import Path
+st.markdown('<div class="header-title">DebateBot 2</div>', unsafe_allow_html=True)
+st.markdown('<div class="header-subtitle">남색 감성의 모바일 토론 챗봇</div>', unsafe_allow_html=True)
 
-logo_path = Path("/mnt/data/챗봇로고.png")
-if logo_path.exists():
-    with open(logo_path, "rb") as image_file:
-        encoded = base64.b64encode(image_file.read()).decode()
-    st.markdown(f'''
-    <div class="header">
-        <img src="data:image/png;base64,{encoded}" alt="Chatbot Logo">
-        <div class="header-title">DebateBot 2</div>
-        <div class="header-subtitle">보라색 감성의 논쟁형 AI 챗봇</div>
-    </div>
-    ''', unsafe_allow_html=True)
-else:
-    st.warning("챗봇 로고 이미지가 로드되지 않았어요.")
-
-# ============================ 토픽 설정 ============================
+# ============================ 주제 표시 ============================
 topics = [
     "재택근무, 계속 확대되어야 할까요?",
     "AI 면접 도입, 공정한 채용일까요?",
@@ -172,7 +154,7 @@ if not st.session_state.current_topic:
 
 st.markdown(f"<div class='topic-card'>📝 오늘의 주제: {st.session_state.current_topic}</div>", unsafe_allow_html=True)
 
-# ============================ 초기 메시지 ============================
+# ============================ 첫 인삿말 ============================
 if not st.session_state.messages:
     st.session_state.messages.append({
         "role": "assistant",
@@ -181,21 +163,30 @@ if not st.session_state.messages:
 
 # ============================ 채팅 표시 ============================
 st.markdown('<div class="chat-container">', unsafe_allow_html=True)
+
+avatar_path = Path("/mnt/data/챗봇로고.png")
+avatar_tag = "🤖"
+if avatar_path.exists():
+    with open(avatar_path, "rb") as f:
+        avatar_encoded = base64.b64encode(f.read()).decode()
+        avatar_tag = f'<img src="data:image/png;base64,{avatar_encoded}" width="36" height="36" style="border-radius:50%;">'
+
 for msg in st.session_state.messages:
-    if msg["role"] == "user":
+    if msg["role"] == "assistant":
+        st.markdown(f"""
+        <div class="bot-message">
+            <div class="avatar">{avatar_tag}</div>
+            <div class="message">{msg['content']}</div>
+        </div>
+        """, unsafe_allow_html=True)
+    else:
         st.markdown(f"""
         <div class="user-message">
             <div class="avatar">👤</div>
             <div class="message">{msg['content']}</div>
         </div>
         """, unsafe_allow_html=True)
-    else:
-        st.markdown(f"""
-        <div class="bot-message">
-            <div class="avatar">🤖</div>
-            <div class="message">{msg['content']}</div>
-        </div>
-        """, unsafe_allow_html=True)
+
 st.markdown('</div>', unsafe_allow_html=True)
 
 # ============================ 사용자 입력 ============================
