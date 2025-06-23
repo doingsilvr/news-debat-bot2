@@ -53,6 +53,9 @@ if "start_time" not in st.session_state:
 # ============================ UI 스타일 ============================
 st.markdown("""
 <style>
+    .stApp {
+        background-color: #e0e7ff;
+    }
     .main-title {
         font-size: 28px;
         font-weight: 700;
