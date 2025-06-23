@@ -140,16 +140,21 @@ st.markdown("""
 # ============================ 메인 UI ============================
 st.markdown('<div class="main-container">', unsafe_allow_html=True)
 
-with open("/mnt/data/챗봇로고.png", "rb") as image_file:
-    encoded = base64.b64encode(image_file.read()).decode()
+from pathlib import Path
 
-st.markdown(f"""
-<div class="header">
-    <img src="data:image/png;base64,{encoded}" alt="Chatbot Logo">
-    <div class="header-title">DebateBot 2</div>
-    <div class="header-subtitle">보라색 감성의 논쟁형 AI 챗봇</div>
-</div>
-""", unsafe_allow_html=True)
+logo_path = Path("/mnt/data/챗봇로고.png")
+if logo_path.exists():
+    with open(logo_path, "rb") as image_file:
+        encoded = base64.b64encode(image_file.read()).decode()
+    st.markdown(f'''
+    <div class="header">
+        <img src="data:image/png;base64,{encoded}" alt="Chatbot Logo">
+        <div class="header-title">DebateBot 2</div>
+        <div class="header-subtitle">보라색 감성의 논쟁형 AI 챗봇</div>
+    </div>
+    ''', unsafe_allow_html=True)
+else:
+    st.warning("챗봇 로고 이미지가 로드되지 않았어요.")
 
 # ============================ 토픽 설정 ============================
 topics = [
