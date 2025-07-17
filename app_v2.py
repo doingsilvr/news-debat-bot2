@@ -179,16 +179,7 @@ if user_input := st.chat_input("메시지를 입력해주세요"):
 4. **답변은 3~4줄 이내**로 작성하고, 마지막에 반드시 선택형 질문 또는 반박 유도 질문을 던지세요.
 """
 
-    with st.chat_message("assistant", avatar="🤖"):
-        with st.empty():
-            st.markdown("""
-            <div class="typing-indicator">
-                <div class="typing-dot"></div>
-                <div class="typing-dot"></div>
-                <div class="typing-dot"></div>
-            </div>
-            """, unsafe_allow_html=True)
-
+        with st.chat_message("assistant", avatar="🤖"):
         try:
             stream = client.chat.completions.create(
                 model="gpt-3.5-turbo",
@@ -196,10 +187,16 @@ if user_input := st.chat_input("메시지를 입력해주세요"):
                 stream=True,
             )
             response = st.write_stream(stream)
+
+            # ✅ GPT 호출 성공 후에만 로그 저장
+            if user_input and response:
+                log_to_gsheet(user_input, response, st.session_state.turn_count, st.session_state.start_time)
+
         except Exception as e:
             response = f"❌ GPT 호출 중 오류가 발생했습니다: {str(e)}"
             st.error(response)
 
+    # 메시지 추가는 오류와 관계없이 수행
     st.session_state.messages.append({"role": "assistant", "content": response})
 
     if st.session_state.turn_count == 3:
