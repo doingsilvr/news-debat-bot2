@@ -12,7 +12,7 @@ client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 def get_gsheet():
     credentials = st.secrets["GSHEET_CREDENTIALS"]
     gc = gspread.service_account_from_dict(credentials)
-    sheet = gc.open_by_url(st.secrets["GSHEET_URL"]).worksheet("시트2")
+    sheet = gc.open_by_url(st.secrets["GSHEET_URL"]).worksheet("debate2")
     return sheet
 
 def log_to_gsheet(user_input, gpt_response, turn, start_time):
