@@ -1,234 +1,146 @@
-<!DOCTYPE html>
-<html lang="ko">
-<head>
-    <meta charset="UTF-8">
-    <title>토론 메이트</title>
-    <style>
-        body {
-            margin: 0;
-            padding: 0;
-            background-color: #e0e7ff;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
+import streamlit as st
+from openai import OpenAI
+from PIL import Image
+import random
+from datetime import datetime
+import gspread
 
-        .chat-wrapper {
-            max-width: 700px;
-            margin: 30px auto;
-            background-color: white;
-            border-radius: 20px;
-            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-            height: 90vh;
-        }
+# ============================ 시크릿 설정 ============================
+client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
-        .chat-header {
-            background-color: #1e3a8a;
-            color: white;
-            padding: 20px;
-            text-align: center;
-        }
+# ============================ 구글 시트 연동 ============================
+def get_gsheet():
+    credentials = st.secrets["GSHEET_CREDENTIALS"]
+    gc = gspread.service_account_from_dict(credentials)
+    sheet = gc.open_by_url(st.secrets["GSHEET_URL"]).worksheet("시트2")
+    return sheet
 
-        .chat-header h1 {
-            font-size: 22px;
-            margin-bottom: 5px;
-        }
+def log_to_gsheet(user_input, gpt_response, turn, start_time):
+    sheet = get_gsheet()
+    duration_sec = int((datetime.now() - start_time).total_seconds())
+    is_bounce = turn <= 1
+    last_gpt_message = ""
+    for m in reversed(st.session_state.messages):
+        if m["role"] == "assistant":
+            last_gpt_message = m["content"]
+            break
+    sheet.append_row([
+        st.session_state.session_id,
+        datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        st.session_state.current_topic,
+        turn,
+        user_input,
+        gpt_response,
+        duration_sec,
+        is_bounce,
+        last_gpt_message
+    ])
 
-        .chat-header p {
-            font-size: 14px;
-            margin-top: 0;
-            color: #cbd5e1;
-        }
+# ============================ 초기 상태 ============================
+st.set_page_config(page_title="토론 메이트", page_icon="🗣️", layout="centered")
 
-        .topic-box {
-            background-color: #1e40af;
-            color: white;
-            padding: 12px;
-            font-weight: bold;
-            text-align: center;
-        }
+if "session_id" not in st.session_state:
+    st.session_state.session_id = f"session_{datetime.now().strftime('%Y%m%d%H%M%S')}"
+if "messages" not in st.session_state:
+    st.session_state.messages = []
+if "current_topic" not in st.session_state:
+    st.session_state.current_topic = None
+if "turn_count" not in st.session_state:
+    st.session_state.turn_count = 0
+if "start_time" not in st.session_state:
+    st.session_state.start_time = datetime.now()
 
-        .chat-box {
-            flex: 1;
-            padding: 20px;
-            overflow-y: auto;
-        }
+# ============================ UI ============================
+try:
+    service_logo = Image.open("로고1.png")
+    st.image(service_logo, width=100)
+except:
+    st.warning("로고1 이미지를 불러올 수 없습니다. '로고1.png' 파일을 확인해주세요.")
 
-        .message {
-            display: flex;
-            margin-bottom: 15px;
-            align-items: flex-start;
-        }
+st.title("토론 메이트 - 오늘의 주제 한마디")
+st.markdown("""<div style="text-align:center; margin-top:-10px; margin-bottom:30px; font-size:16px; color:#bbb;">흥미로운 사회 주제에 대해 함께 생각해보고 이야기 나눠보아요. 🧠</div>""", unsafe_allow_html=True)
 
-        .bot .bubble {
-            background-color: #f3f4f6;
-            color: #111827;
-        }
+topic_pool = [
+    "재택근무, 계속 확대되어야 할까요?",
+    "AI 면접 도입, 공정한 채용일까요?",
+    "출산 장려 정책, 효과가 있을까요?",
+    "기후 변화 대응, 개인의 책임도 클까요?",
+    "학벌 중심 사회, 과연 공정한가요?",
+]
 
-        .user .bubble {
-            background-color: #3b82f6;
-            color: white;
-            margin-left: auto;
-        }
+def pick_new_topic():
+    st.session_state.current_topic = random.choice(topic_pool)
+    st.session_state.messages = []
+    st.session_state.turn_count = 0
+    st.session_state.start_time = datetime.now()
 
-        .bubble {
-            padding: 12px 16px;
-            border-radius: 16px;
-            max-width: 80%;
-            line-height: 1.4;
-            position: relative;
-        }
+if not st.session_state.current_topic:
+    pick_new_topic()
 
-        .bot img {
-            width: 36px;
-            height: 36px;
-            border-radius: 50%;
-            margin-right: 10px;
-        }
+# 첫 인삿말
+if not st.session_state.messages:
+    intro = f"""안녕하세요, 저는 오늘의 주제를 함께 이야기 나누는 '토론 메이트'예요! 🤖  
+🗣️ **오늘의 주제: {st.session_state.current_topic}**  
+이 주제에 대해 어떻게 생각하시나요? 찬성/반대 또는 다른 관점에서 자유롭게 이야기해 주세요."""
+    st.session_state.messages.append({"role": "assistant", "content": intro})
 
-        .loader {
-            border: 4px solid #e0e7ff;
-            border-top: 4px solid #3b82f6;
-            border-radius: 50%;
-            width: 22px;
-            height: 22px;
-            animation: spin 1s linear infinite;
-            margin-right: 10px;
-        }
+# 이전 메시지 출력
+for msg in st.session_state.messages:
+    with st.chat_message(msg["role"], avatar="🤖" if msg["role"] == "assistant" else "🧑"):
+        st.markdown(msg["content"])
 
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
+# 주제 바꾸기 버튼
+if st.button("🔄 다른 주제 주세요"):
+    pick_new_topic()
+    st.rerun()
 
-        .input-box {
-            display: flex;
-            padding: 10px;
-            border-top: 1px solid #e5e7eb;
-            background-color: #f9fafb;
-        }
+# ============================ 사용자 입력 처리 ============================
+if user_input := st.chat_input("당신의 생각은 어떠신가요?"):
+    st.session_state.messages.append({"role": "user", "content": user_input})
+    st.session_state.turn_count += 1
 
-        .input-box input {
-            flex: 1;
-            padding: 12px;
-            border-radius: 30px;
-            border: 1px solid #cbd5e1;
-            font-size: 14px;
-        }
+    with st.chat_message("user", avatar="🧑"):
+        st.markdown(user_input)
 
-        .input-box button {
-            margin-left: 10px;
-            padding: 12px 18px;
-            background-color: #1d4ed8;
-            color: white;
-            border: none;
-            border-radius: 30px;
-            cursor: pointer;
-        }
+    # 프롬프트 (전략 2-1: 인물 관점 + 반복 방지 조건 강화)
+    system_prompt = f"""
+    당신은 논리적이고 친근한 토론 파트너입니다. 주제는 "{st.session_state.current_topic}"입니다.
 
-        .new-topic-btn {
-            display: inline-block;
-            margin-top: 8px;
-            background-color: #1e3a8a;
-            color: white;
-            border: none;
-            padding: 6px 12px;
-            border-radius: 8px;
-            font-size: 13px;
-            cursor: pointer;
-        }
-    </style>
-</head>
-<body>
-    <div class="chat-wrapper">
-        <div class="chat-header">
-            <h1>토론 메이트 - 오늘의 주제 한마디</h1>
-            <p>흥미로운 사회 주제에 대해 함께 생각해보고 이야기 나눠보아요. 🧠</p>
-        </div>
-        <div id="topic" class="topic-box">📌 오늘의 주제: </div>
-        <div class="chat-box" id="chat-box"></div>
-        <div class="input-box">
-            <input type="text" id="user-input" placeholder="메시지를 입력해주세요">
-            <button onclick="sendMessage()">보내기</button>
-        </div>
-    </div>
+     다음 조건을 지키세요:
+    - 상대와 토론을 하고 있습니다. 상대방의 주장에 **논리적 반론**을 제시하세요.
+    - 상대방과 완전히 같은 의견이더라도, **다른 시각을 반드시 한 가지 제시**하세요.
+    - 토론의 주도권을 가지고, 대화를 **논쟁적으로 이어가세요.**
+    - 반대 시각 제시할 때, 반드시 하나의 주장을 제시하되, 반드시 특정 인물(가상 인물 또는 실제 인물)의 관점에서 설명해 주세요.(예시 : “정의당 국회의원 A는 출산 장려 정책이 실효성이 없다고 말했어요.”, “회사원이자 엄마인 B 씨는 다르게 생각해요…”)
+    - B씨, 김 대리, 전업주부 A씨, CEO C씨 등 인물 관점을 반드시 명시 및 그 인물의 배경과 입장을 포함해 주장을 전개하세요
+    - 인물 예시를 들 때 반드시 주어가 먼저 나오도록 하세요.
+    - 사용자의 주장과 반대되는 관점을 **구체적인 인물(가상/실존)**의 시각으로 표현하세요.
+    - 단순한 반복 요약이 아니라, 새로운 시각의 예시와 함께 질문을 유도하세요.
+    - 사용자의 이전 발언과 당신의 발언에서 **동일한 표현이나 논리를 반복하지 마세요**.
+    - 필요하다면 구체적인 사례, 상황을 통해 질문을 유도하세요.
+    - 응답은 5줄 이내로 요약해 주세요.
+    - 끝에는 반드시 구체적인 질문으로 연결해 주세요.
+    """
 
-    <script>
-        const topics = [
-            "출산 장려 정책, 효과가 있을까요?",
-            "기후 변화 대응, 개인의 책임도 클까요?",
-            "학벌 중심 사회, 과연 공정한가요?",
-            "AI 기술 발전, 인간의 일자리를 위협할까요?",
-            "범죄자 신상 공개, 국민의 알 권리인가요?"
-        ];
+    with st.chat_message("assistant", avatar="🤖"):
+        try:
+            stream = client.chat.completions.create(
+                model="gpt-3.5-turbo",
+                messages=[{"role": "system", "content": system_prompt}] + st.session_state.messages,
+                stream=True,
+            )
+            response = st.write_stream(stream)
+        except Exception as e:
+            response = f"❌ GPT 호출 중 오류가 발생했습니다: {str(e)}"
+            st.error(response)
 
-        function getRandomTopic() {
-            return topics[Math.floor(Math.random() * topics.length)];
-        }
+    st.session_state.messages.append({"role": "assistant", "content": response})
 
-        function setTopic() {
-            const topic = getRandomTopic();
-            document.getElementById('topic').textContent = `📌 오늘의 주제: ${topic}`;
-        }
+    # 전략 1-2: turn=3일 때 주제 전환 안내 및 버튼 제공
+    if st.session_state.turn_count == 3:
+        st.markdown("👀 혹시 이 주제가 너무 어렵거나 지루하셨다면, 아래 버튼을 눌러 다른 주제로 바꿔보실 수 있어요!")
+        if st.button("🔄 다른 주제 보기"):
+            pick_new_topic()
+            st.rerun()
 
-        function appendMessage(text, sender = 'bot', isLoading = false) {
-            const chatBox = document.getElementById('chat-box');
-            const message = document.createElement('div');
-            message.className = `message ${sender}`;
-
-            if (sender === 'bot') {
-                const avatar = document.createElement('img');
-                avatar.src = "/mnt/data/chatbot_avatar.png";
-                message.appendChild(avatar);
-            }
-
-            const bubble = document.createElement('div');
-            bubble.className = 'bubble';
-
-            if (isLoading) {
-                const loader = document.createElement('div');
-                loader.className = 'loader';
-                bubble.appendChild(loader);
-            } else {
-                bubble.innerHTML = text;
-                // Add "다른 주제 주세요" only for bot messages
-                if (sender === 'bot') {
-                    const newBtn = document.createElement('button');
-                    newBtn.className = 'new-topic-btn';
-                    newBtn.textContent = '🔄 다른 주제 주세요';
-                    newBtn.onclick = setTopic;
-                    bubble.appendChild(document.createElement('br'));
-                    bubble.appendChild(newBtn);
-                }
-            }
-
-            message.appendChild(bubble);
-            chatBox.appendChild(message);
-            chatBox.scrollTop = chatBox.scrollHeight;
-        }
-
-        function sendMessage() {
-            const input = document.getElementById('user-input');
-            const text = input.value.trim();
-            if (!text) return;
-
-            appendMessage(text, 'user');
-            input.value = '';
-
-            appendMessage('', 'bot', true); // show loading
-
-            setTimeout(() => {
-                const chatBox = document.getElementById('chat-box');
-                chatBox.lastChild.remove(); // remove loading
-                appendMessage("그렇죠, 반대 의견도 중요하죠. 예를 들어 전업주부 A씨는 “출산 장려 정책은 실효성이 없다”고 말했어요.", 'bot');
-            }, 1200);
-        }
-
-        window.onload = () => {
-            setTopic();
-            appendMessage("안녕하세요, 저는 오늘의 주제를 함께 이야기 나누는 '토론 메이트'예요! 😊<br><strong>🗣️ 오늘의 주제:</strong> 출산 장려 정책, 효과가 있을까요?<br>이 주제에 대해 어떻게 생각하시나요? 찬성/반대 또는 다른 관점에서 자유롭게 이야기해 주세요.", 'bot');
-        };
-    </script>
-</body>
-</html>
+    # 로그 저장
+    log_to_gsheet(user_input, response, st.session_state.turn_count, st.session_state.start_time)
