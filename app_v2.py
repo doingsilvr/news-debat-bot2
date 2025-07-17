@@ -12,7 +12,7 @@ client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 def get_gsheet():
     credentials = st.secrets["GSHEET_CREDENTIALS"]
     gc = gspread.service_account_from_dict(credentials)
-    sheet = gc.open_by_url(st.secrets["GSHEET_URL"]).worksheet("debate2")
+    sheet = gc.open_by_url(st.secrets["GSHEET_URL"]).worksheet("debatebot2")
     return sheet
 
 def log_to_gsheet(user_input, gpt_response, turn, start_time):
@@ -107,10 +107,10 @@ if user_input := st.chat_input("당신의 생각은 어떠신가요?"):
     당신은 논리적이고 친근한 토론 파트너입니다. 주제는 "{st.session_state.current_topic}"입니다.
 
      다음 조건을 지키세요:
-    - 상대와 토론을 하고 있습니다. 상대방의 주장에 **논리적 반론**을 제시하세요.
-    - 3-4번째 턴까지는 무조건 상대방과 다른 시각을 반드시 한 가지 제시하세요.
+    - 상대와 토론을 하고 있습니다. 무조건 상대방의 주장에 **반론**을 제시하세요.
+    - 한 주제에 대해 3-4번째 턴까지는 무조건 상대방과 다른 시각을 제시하세요.
     - 토론의 주도권을 가지고, 대화를 **논리적으로 이어가세요.**
-    - 반대 시각 제시할 때, 반드시 하나의 주장을 제시하되, 2-4턴에 1회씩 특정 인물(가상 인물 또는 실제 인물)의 관점에서 설명해 주세요.(예시 : “정의당 국회의원 A는 출산 장려 정책이 실효성이 없다고 말했어요.”, “회사원이자 엄마인 B 씨는 다르게 생각해요…”)
+    - *반대 시각 제시할 때,** 반드시 하나의 주장을 제시하되, 2-4턴에 1회씩 특정 인물(가상 인물 또는 실제 인물)의 관점에서 설명해 주세요.(예시 : “정의당 국회의원 A는 출산 장려 정책이 실효성이 없다고 말했어요.”, “회사원이자 엄마인 B 씨는 다르게 생각해요…”)
     - B씨, 김 대리, 전업주부 A씨, CEO C씨 등 인물 관점을 반드시 명시 및 그 인물의 배경과 입장을 포함해 주장을 전개하세요
     - 인물 예시를 들 때 반드시 주어가 먼저 나오도록 하세요.
     - 사용자의 주장과 반대되는 관점을 **구체적인 인물(가상/실존)**의 시각으로 표현하세요.
